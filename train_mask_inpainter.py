@@ -1,0 +1,33 @@
+import argparse
+
+import keras.backend as K
+import numpy as np
+import tensorflow as tf
+
+from net import Net
+from preprocess import DataFeeder
+from mask_inpainter import MaskInpainter
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--load_img_dir', type=str, default='F:/image')
+parser.add_argument('--load_mask_dir', type=str, default='F:/masks')
+parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--image_size', type=int, default=64)
+args = parser.parse_args()
+load_img_dir = args.load_img_dir
+load_mask_dir = args.load_mask_dir
+batch_size = args.batch_size
+size = (args.image_size, args.image_size)
+
+net = Net(size[0])
+data_feeder = DataFeeder(load_img_dir, load_mask_dir, batch_size=batch_size, size=size)
+sess = tf.Session()
+Mi = MaskInpainter(net, data_feeder, sess, batch_size, size[0])
+i=0
+
+for i in range(20):
+    Mi.train(100)
+    sess.run(Mi.learning_rate_decay_op)
+    Mi.generate_image('result'+str(i), concat=True)
+
+Mi.save_models('Mi')
