@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 
 class MaskInpainter(object):
-    def __init__(self, net, data_feeder, sess, batch_size=64, size=64, dis_lr=1e-4, gen_lr=1e-4):
+    def __init__(self, net, data_feeder, sess, batch_size=64, size=128, dis_lr=1e-4, gen_lr=1e-4):
         self.net = net
         self.image_size = size
         self.data_feeder = data_feeder
@@ -25,8 +25,8 @@ class MaskInpainter(object):
         self.fake_image , self.comp = self.net.generator([self.masked_image, self.mask, self.ones])
         
         # define loss
-        self.loss_hole = K.mean(K.abs(((1-self.mask)*(self.fake_image - self.real_image))))
-        self.loss_valid = K.mean(K.abs((self.mask)*(self.fake_image - self.real_image)))
+        self.loss_valid = K.sum(K.abs(((1-self.mask)*(self.fake_image - self.real_image))))
+        self.loss_hole = K.sum(K.abs((self.mask)*(self.fake_image - self.real_image)))
         x = self.fake_image * self.mask
         a = K.square(x[:, :size - 1, :size - 1,:] - x[:, 1:, :size - 1,:])
         b = K.square(x[:, :size - 1, :size - 1, :] - x[:, :size - 1, 1:,:])
