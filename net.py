@@ -1,6 +1,6 @@
 import os
 from keras.layers import Conv2DTranspose, Reshape, UpSampling2D, Conv2D, LeakyReLU, Flatten, Activation, BatchNormalization, Input, add
-from keras.layers import Multiply, Subtract,Dropout
+from keras.layers import Multiply, Subtract,Dropout, MaxPooling2D
 from keras.models import Model
 import keras.backend as K
 import numpy as np
@@ -10,13 +10,15 @@ class Net(object):
     def __init__(self, dim=64, gen_model=None, dis_model=None):
         if gen_model is None:
             masked_imgs = Input(shape=(None, None, 3))
-            masks = Input(shape = (None, None, 3))
+            masks = Input(shape = (None, None, 1))
             ones = Input(shape = (None, None, 3))
             # Encoder
             # 128*128*3
-            x=Conv2D(64, kernel_size=3, dilation_rate=2, padding="same")(masked_imgs)
+            
+            x=Conv2D(64, kernel_size=3, padding="same")(masked_imgs)
+            masks=MaxPooling2D(pool_size=(3, 3),padding='same')
             x1=x
-            x=Conv2D(64, kernel_size=5, strides=2, padding="same")(x)
+            x=Conv2D(64, kernel_size=5, strides=2, padding="same",name='p1')(x)
 
             z=x
             #x=Conv2D(128, kernel_size=3, padding="same")(x)
@@ -26,14 +28,14 @@ class Net(object):
             x=LeakyReLU(alpha=0.1)(x)
             x=BatchNormalization(momentum=0.8)(x)
             x=Conv2D(128, kernel_size=5, strides=2, padding="same")(x)
-            x=Conv2D(128, kernel_size=3, dilation_rate=2, padding="same")(x)
+            x=Conv2D(128, kernel_size=3, dilation_rate=2, padding="same",name='p2')(x)
             y=x
             # 32*32*128
             x=LeakyReLU(alpha=0.1)(x)
             x=BatchNormalization(momentum=0.8)(x)
             x=Conv2D(128, kernel_size=3, strides=2, padding="same")(x)
             x=BatchNormalization(momentum=0.8)(x)
-            x=Conv2D(128, kernel_size=3, dilation_rate=2, padding="same")(x)
+            x=Conv2D(128, kernel_size=3, dilation_rate=2, padding="same",name='p3')(x)
             # 16*16*128
             x=LeakyReLU(alpha=0.1)(x)
             x=BatchNormalization(momentum=0.8)(x)
