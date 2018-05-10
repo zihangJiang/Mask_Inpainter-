@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser()
 #parser.add_argument('--load_mask_dir', type=str, default='F:/masks')
 parser.add_argument('--load_img_dir', type=str, default='/data/anaconda/Mask_Inpainting/dataset')
 parser.add_argument('--load_mask_dir', type=str, default='/data/anaconda/Mask_Inpainting/mask')
-parser.add_argument('--batch_size', type=int, default=64)
+parser.add_argument('--batch_size', type=int, default=20)
 parser.add_argument('--image_size', type=int, default=128)
 
 
@@ -31,8 +31,9 @@ sess = tf.Session()
 Mi = MaskInpainter(net, data_feeder, sess, batch_size, size[0],load = True)
 i=0
 
-for i in range(20):
-    Mi.train(100)
+for i in range(50):
+    Mi.train(200)
+    print('total epoch:{}'.format(i))
     sess.run(Mi.learning_rate_decay_op)
     Mi.generate_image('result'+str(i), concat=True)
 

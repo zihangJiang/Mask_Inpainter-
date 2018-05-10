@@ -5,7 +5,7 @@ import numpy as np
 from keras.applications.vgg19 import VGG19
 import os
 class MaskInpainter(object):
-    def __init__(self, net, data_feeder, sess, batch_size=64, size=128, dis_lr=1e-4, gen_lr=1e-4,load = False):
+    def __init__(self, net, data_feeder, sess, batch_size=64, size=128, dis_lr=1e-4, gen_lr=3e-5,load = False):
         self.net = net
         if load:
             net.generator.load_weights(os.path.join("save", "generator_{}.h5".format("Mi")),by_name = True)
@@ -51,14 +51,14 @@ class MaskInpainter(object):
         # the model will be loaded with pre-trained ImageNet weights
         model = VGG19(input_tensor=input_tensor,
                             weights='/data/anaconda/CVAEFaceShop/vgg19_weights_tf_dim_ordering_tf_kernels_notop.h5', include_top=False)
+        model.trainable = False
         print('Model loaded.')
 
         # get the symbolic outputs of each "key" layer (we gave them unique names).
         outputs_dict = dict([(layer.name, layer.output) for layer in model.layers])
 
-        feature_layers = ['block1_conv1', 'block2_conv1',
-                          'block3_conv1', 'block4_conv1',
-                          'block5_conv1']
+        feature_layers = ['block1_pool', 'block2_pool',
+                          'block3_pool']
         sty_loss=0
         per_loss=0
         for layer_name in feature_layers:
@@ -66,13 +66,13 @@ class MaskInpainter(object):
             real_features=layer_features[0,:,:,:]
             style_reference_features = layer_features[1, :, :, :]
             combination_features = layer_features[2, :, :, :]
-            sl = style_loss(style_reference_features, real_features)
-            sl+=style_loss(combination_features,real_features)
-            pl = per_loss(style_reference_features, real_features)
-            pl+=per_loss(combination_features,real_features)
+            sl = self.style_loss(style_reference_features, real_features)
+            sl+= self.style_loss(combination_features,real_features)
+            pl = self.per_loss(style_reference_features, real_features)
+            pl+= self.per_loss(combination_features,real_features)
 
             sty_loss += (1.0/ len(feature_layers)) * sl
-            per_loss+=pl
+            per_loss += (1.0/ len(feature_layers)) * pl
         return sty_loss,per_loss
 
 
@@ -101,7 +101,7 @@ class MaskInpainter(object):
         b = K.square(x[:, :size - 1, :size - 1, :] - x[:, :size - 1, 1:,:])
         self.loss_tv = K.sum(K.pow(a + b, 1.25))
 
-        self.gen_loss = 6*self.loss_hole+self.loss_valid +0.1*self.loss_tv+0.05*self.per_loss+120*self.style_loss
+
 
         
         a = self.fake_image[:, :size - 1, :size - 1,:] * (K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, 1:, :size - 1,:]) + K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, :size - 1, 1:,:]))
@@ -116,9 +116,8 @@ class MaskInpainter(object):
 
         self.loss_boundary_comp = K.sum(K.abs(b-c))
         
-        self.gen_loss = 6*self.loss_hole+self.loss_valid +0.1*self.loss_tv +10*self.loss_boundary_fake+30*self.loss_boundary_comp
 
-        
+        self.gen_loss = 6*self.loss_hole+self.loss_valid +0.1*self.loss_tv+0.05*self.per_loss+120*self.style_loss +10*self.loss_boundary_fake+30*self.loss_boundary_comp
 
         # initialize
         self.gen_updater = tf.train.AdamOptimizer(learning_rate=self.gen_lr,beta1=0., beta2=0.9).minimize(self.gen_loss, var_list=self.net.generator.trainable_weights)
