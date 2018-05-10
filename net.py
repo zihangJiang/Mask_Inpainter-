@@ -78,7 +78,7 @@ class Net(object):
             x=Conv2D(64, kernel_size=3, padding="same")(x)
             x=add([x,x1])
 
-    		
+            
             
             x=Activation('relu')(x)
             x=BatchNormalization(momentum=0.8)(x)
