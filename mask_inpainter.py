@@ -19,7 +19,7 @@ class MaskInpainter(object):
         self.built = False
 
 
-    def gram_matrix(x):
+    def gram_matrix(self,x):
         assert K.ndim(x) == 3
         if K.image_data_format() == 'channels_first':
             features = K.batch_flatten(x)#transfer tensor to 2-dim tensor(matrix), keep the 1st-dim unchange
@@ -31,8 +31,8 @@ class MaskInpainter(object):
     def style_loss(self,style, combination):
         assert K.ndim(style) == 3
         assert K.ndim(combination) == 3
-        S = gram_matrix(style)
-        C = gram_matrix(combination)
+        S = self.gram_matrix(style)
+        C = self.gram_matrix(combination)
         channels = 3
         #size = img_nrows * img_ncols
         size=self.image_size*self.image_size
@@ -47,7 +47,7 @@ class MaskInpainter(object):
         # combine the 3 images into a single Keras tensor
         input_tensor = K.concatenate([real,comp,fake], axis=0)
 
-        # build the VGG16 network with our 3 images as input
+        # build the VGG19 network with our 3 images as input
         # the model will be loaded with pre-trained ImageNet weights
         model = VGG19(input_tensor=input_tensor,
                             weights='/data/anaconda/CVAEFaceShop/vgg19_weights_tf_dim_ordering_tf_kernels_notop.h5', include_top=False)
@@ -91,7 +91,7 @@ class MaskInpainter(object):
         self.loss_hole = K.sum(K.abs((self.mask)*(self.fake_image - self.real_image)))
 
 
-        self.style_loss,self.per_loss=new_loss(self.real_image,self.comp,self.fake_image)
+        self.style_loss,self.per_loss=self.new_loss(self.real_image,self.comp,self.fake_image)
 
         #self.per_loss=per_loss(self.real_image,self.comp)
         #self.per_loss+=per_loss(self.real_image,self.fake_image)
