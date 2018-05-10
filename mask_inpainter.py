@@ -1,15 +1,14 @@
 from keras import backend as K
 import tensorflow as tf
 import numpy as np
+
 from keras.applications.vgg19 import VGG19
-
-
-
-
-
+import os
 class MaskInpainter(object):
-    def __init__(self, net, data_feeder, sess, batch_size=64, size=64, dis_lr=1e-4, gen_lr=1e-4):
+    def __init__(self, net, data_feeder, sess, batch_size=64, size=128, dis_lr=1e-4, gen_lr=1e-4,load = False):
         self.net = net
+        if load:
+            net.generator.load_weights(os.path.join("save", "generator_{}.h5".format("Mi")),by_name = True)
         self.image_size = size
         self.data_feeder = data_feeder
         self.sess = sess
@@ -91,8 +90,7 @@ class MaskInpainter(object):
         self.loss_valid = K.sum(K.abs(((1-self.mask)*(self.fake_image - self.real_image))))
         self.loss_hole = K.sum(K.abs((self.mask)*(self.fake_image - self.real_image)))
 
-        #self.style_loss=style_loss(self.real_image,self.comp)
-        #self.style_loss+=style_loss(self.real_image,self.fake_image)
+
         self.style_loss,self.per_loss=new_loss(self.real_image,self.comp,self.fake_image)
 
         #self.per_loss=per_loss(self.real_image,self.comp)
@@ -102,7 +100,24 @@ class MaskInpainter(object):
         a = K.square(x[:, :size - 1, :size - 1,:] - x[:, 1:, :size - 1,:])
         b = K.square(x[:, :size - 1, :size - 1, :] - x[:, :size - 1, 1:,:])
         self.loss_tv = K.sum(K.pow(a + b, 1.25))
+
         self.gen_loss = 6*self.loss_hole+self.loss_valid +0.1*self.loss_tv+0.05*self.per_loss+120*self.style_loss
+
+        
+        a = self.fake_image[:, :size - 1, :size - 1,:] * (K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, 1:, :size - 1,:]) + K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, :size - 1, 1:,:]))
+        b = self.fake_image[:, 1:, :size - 1,:] * (K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, 1:, :size - 1,:]) + K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, :size - 1, 1:,:]))
+        c = self.fake_image[:, :size - 1, 1:,:] * (K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, 1:, :size - 1,:]) + K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, :size - 1, 1:,:]))
+
+        self.loss_boundary_fake = K.sum(K.abs(b-c))
+        
+        a = self.comp[:, :size - 1, :size - 1,:] * (K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, 1:, :size - 1,:]) + K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, :size - 1, 1:,:]))
+        b = self.comp[:, 1:, :size - 1,:] * (K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, 1:, :size - 1,:]) + K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, :size - 1, 1:,:]))
+        c = self.comp[:, :size - 1, 1:,:] * (K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, 1:, :size - 1,:]) + K.abs(self.mask[:, :size - 1, :size - 1, :] - self.mask[:, :size - 1, 1:,:]))
+
+        self.loss_boundary_comp = K.sum(K.abs(b-c))
+        
+        self.gen_loss = 6*self.loss_hole+self.loss_valid +0.1*self.loss_tv +10*self.loss_boundary_fake+30*self.loss_boundary_comp
+
         
 
         # initialize
@@ -119,7 +134,7 @@ class MaskInpainter(object):
             feed_in = {self.masked_image: masked_imgs, self.mask: masks,
                     self.real_image: images, self.ones: ones}
             self.sess.run(self.gen_updater, feed_in)
-            print("epoch: {}, gen_loss: {}".format(i, self.sess.run(self.gen_loss, feed_in)))
+            print("epoch: {}, gen_loss: {}, loss_hole: {}".format(i, self.sess.run(self.gen_loss, feed_in), self.sess.run(self.loss_hole, feed_in)))
 
     def generate_image(self, names, concat, save_dir='save'):
         if not self.built:

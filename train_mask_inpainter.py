@@ -10,12 +10,15 @@ from mask_inpainter import MaskInpainter
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "5"
 parser = argparse.ArgumentParser()
+
 #parser.add_argument('--load_img_dir', type=str, default='F:/dataset')
 #parser.add_argument('--load_mask_dir', type=str, default='F:/masks')
 parser.add_argument('--load_img_dir', type=str, default='/data/anaconda/Mask_Inpainting/dataset')
 parser.add_argument('--load_mask_dir', type=str, default='/data/anaconda/Mask_Inpainting/mask')
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--image_size', type=int, default=128)
+
+
 args = parser.parse_args()
 load_img_dir = args.load_img_dir
 load_mask_dir = args.load_mask_dir
