@@ -1,11 +1,18 @@
 import os
 from keras.layers import Conv2DTranspose, Reshape, UpSampling2D, Conv2D, LeakyReLU, Flatten, Activation, BatchNormalization, Input, add
-from keras.layers import Multiply, Subtract,Dropout, MaxPooling2D
+from keras.layers import Multiply, Subtract,Dropout,MaxPool2D
 from keras.models import Model
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
 
+def P_Conv(x, M, filters, kernel_size = 3, strides = 1 ,padding = "same"):
+    x = Multiply()([x, M])
+    x = Conv2D(filters, kernel_size = kernel_size, strides=strides, padding = padding)(x)
+    M = MaxPool2D(pool_size = (kernel_size,kernel_size), strides=strides,padding = padding)(M)
+    return (x,M)
+    
+    
 class Net(object):
     def __init__(self, dim=64, gen_model=None, dis_model=None):
         if gen_model is None:
@@ -14,11 +21,11 @@ class Net(object):
             ones = Input(shape = (None, None, 3))
             # Encoder
             # 128*128*3
-            
-            x=Conv2D(64, kernel_size=3, padding="same")(masked_imgs)
-            masks=MaxPooling2D(pool_size=(3, 3),padding='same')
+            x = Conv2D(64, kernel_size=3, padding="same")(masked_imgs)
+            M = MaxPool2D(pool_size = 3, strides = 1, padding = "same")(masks)
             x1=x
-            x=Conv2D(64, kernel_size=5, strides=2, padding="same",name='p1')(x)
+            
+            x, M = P_Conv(x, M, 64, kernel_size=5, strides=2)
 
             z=x
             #x=Conv2D(128, kernel_size=3, padding="same")(x)
@@ -27,19 +34,19 @@ class Net(object):
             # 64*64*64
             x=LeakyReLU(alpha=0.1)(x)
             x=BatchNormalization(momentum=0.8)(x)
-            x=Conv2D(128, kernel_size=5, strides=2, padding="same")(x)
-            x=Conv2D(128, kernel_size=3, dilation_rate=2, padding="same",name='p2')(x)
+            x, M = P_Conv(x, M, 128, kernel_size=5, strides=2, padding="same")
+            x, M = P_Conv(x, M, 128, kernel_size=3, padding="same")
             y=x
             # 32*32*128
             x=LeakyReLU(alpha=0.1)(x)
             x=BatchNormalization(momentum=0.8)(x)
-            x=Conv2D(128, kernel_size=3, strides=2, padding="same")(x)
+            x, M = P_Conv(x, M, 128, kernel_size=3, strides=2, padding="same")
             x=BatchNormalization(momentum=0.8)(x)
-            x=Conv2D(128, kernel_size=3, dilation_rate=2, padding="same",name='p3')(x)
+            x, M = P_Conv(x, M, 128, kernel_size=3, padding="same")
             # 16*16*128
             x=LeakyReLU(alpha=0.1)(x)
             x=BatchNormalization(momentum=0.8)(x)
-            x=Conv2D(256, kernel_size=3, padding="same")(x)
+            x, M = P_Conv(x, M, 256, kernel_size=3, padding="same")
             
             # 16*16*256
             x=LeakyReLU(alpha=0.1)(x)
@@ -71,7 +78,7 @@ class Net(object):
             x=Conv2D(64, kernel_size=3, padding="same")(x)
             x=add([x,x1])
 
-    		
+            
             
             x=Activation('relu')(x)
             x=BatchNormalization(momentum=0.8)(x)
